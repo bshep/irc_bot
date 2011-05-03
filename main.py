@@ -6,8 +6,8 @@ sys.setdefaultencoding("utf-8")
 
 HOST='irc.freenode.net' #The server we want to connect to
 PORT=6667 #The connection port which is usually 6667
-NICK='ElWebBot' #The bot's nickname
-IDENT='Bender'
+NICK='MariaBot' #The bot's nickname
+IDENT='Maria'
 REALNAME='what u talkin about'
 channel_list='#elweb' #The default channel for the bot
 

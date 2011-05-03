@@ -3,7 +3,6 @@ import re
 import time
 import datetime
 
-
 urlRegEx = re.compile(r"https?://([^ ]+)")
 
 socket = None
@@ -25,19 +24,28 @@ def parseMessage(line, s):
         checkURL(url.group(0), channel, username, now)
 
 def checkURL(url, spoken_where, spoken_by, on_date):
-    row = runQuery('SELECT url, spoken_where, spoken_by, on_date FROM urls WHERE spoken_where = ? AND url = ?', [spoken_where, url] )
+    row = runQuery('SELECT url, spoken_where, spoken_by, on_date, count FROM urls WHERE spoken_where = ? AND url = ?', [spoken_where, url] )
     
     print row
     
     if row:
         timestamp = datetime.datetime.isoformat(datetime.datetime.fromtimestamp(float(row[3])))
-        sendMessageToChannel(channel, '%s already shared %s on %s' % (row[2], url, timestamp))
+        if row[4] == 1:
+            sendMessageToChannel(channel, '%s already shared %s on %s' % (row[2], url, timestamp))
+        else:
+            # pass
+            sendMessageToChannel(channel, '%s already shared %s on %s and has been repeated %i times' % (row[2], url, timestamp, row[4]))
+        
+        runQuery('UPDATE urls SET count=count+1 WHERE url = ?', [url])
     else:
         runQuery('INSERT INTO urls (url, spoken_where, spoken_by, on_date) VALUES (?, ?, ?, ?)', [url, spoken_where, spoken_by, on_date])
 
-def sendMessageToChannel(channel, message):
+def sendMessageToChannel(channel, user, message):
     print message
-    socket.send('PRIVMSG %s :%s\r\n' % (channel, message))
+    if channel == 'MariaBot':
+        socket.send('PRIVMSG %s :%s\r\n' % (user, message))
+    else:
+        socket.send('PRIVMSG %s :%s\r\n' % (channel, message))
 
 def runQuery(query, args):
     conn = sqlite3.connect('dbs/urldb.db')
@@ -54,7 +62,7 @@ def runQuery(query, args):
     return row
     
 def initModule():
-    runQuery('CREATE TABLE IF NOT EXISTS urls (url text, spoken_where text, spoken_by text, on_date text)',[])
+    runQuery('CREATE TABLE IF NOT EXISTS urls (url text, spoken_where text, spoken_by text, on_date text, count int)',[])
 
 initModule()
 
