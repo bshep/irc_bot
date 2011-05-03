@@ -41,7 +41,8 @@ def processLine(line):
     if line.find('End of /MOTD command.')!=-1: 
         for channel in channel_list.split():
             joinChannel(channel)
-    
+        initModules()
+        
     # if line.find('NickServ!NickServ@services. NOTICE')!=-1:
     #     print 'Identifying...'
         # irc_socket.send('PRIVMSG NickServ :identify 12345\r\n')
@@ -52,7 +53,7 @@ def processLine(line):
         for module in modules:
             print 'Sending to module: %s' % module
             try:
-                modules[module].parseMessage(line, irc_socket)
+                modules[module].parseMessage(line)
             except Exception, e:
                 print 'Error in module: %s' % module
                 print e
@@ -79,6 +80,9 @@ def parseMessage(line):
         for module in modules:
             print 'Reloading module: %s' % module
             reload(modules[module])
+
+        initModules()
+            
     elif line_txt == '@quit 12345':
         sys.exit(0)    
 
@@ -87,6 +91,12 @@ def loadModule(module_name):
     
     print 'Loading: %s' % module_name
     modules[module_name] = __import__('modules.%s' % module_name, None, None, ['*'])
+
+def initModules():
+    for module in modules:
+        print 'Initializing module: %s' % module
+        modules[module].socket = irc_socket
+        modules[module].nickname = NICK
 
 def loadDefaultModules():
     global modules

@@ -6,13 +6,10 @@ import datetime
 urlRegEx = re.compile(r"https?://([^ ]+)")
 
 socket = None
-channel = None
+nickname = None
 
-def parseMessage(line, s):
+def parseMessage(line):
     
-    global socket, channel
-    
-    socket = s
     line = line.rstrip()
     for url in urlRegEx.finditer(line):
         line_items = line.split(' ', 3)
@@ -31,25 +28,25 @@ def checkURL(url, spoken_where, spoken_by, on_date):
     if row:
         timestamp = datetime.datetime.isoformat(datetime.datetime.fromtimestamp(float(row[3])))
         if row[4] == 1:
-            sendMessageToChannel(channel, '%s already shared %s on %s' % (row[2], url, timestamp))
+            sendMessageToChannel(spoken_where, spoken_by, '%s already shared %s on %s' % (row[2], url, timestamp))
         else:
             # pass
-            sendMessageToChannel(channel, '%s already shared %s on %s and has been repeated %i times' % (row[2], url, timestamp, row[4]))
+            sendMessageToChannel(spoken_where, spoken_by, '%s already shared %s on %s and has been repeated %i times' % (row[2], url, timestamp, row[4]+1))
         
-        runQuery('UPDATE urls SET count=count+1 WHERE url = ?', [url])
+        runQuery('UPDATE urls SET count=count+1 WHERE spoken_where = ? AND url = ?', [spoken_where, url])
     else:
         runQuery('INSERT INTO urls (url, spoken_where, spoken_by, on_date) VALUES (?, ?, ?, ?)', [url, spoken_where, spoken_by, on_date])
 
 def sendMessageToChannel(channel, user, message):
-    print message
-    if channel == 'MariaBot':
+    if channel == nickname:
+        # print 'PRIVMSG %s :%s\r\n' % (user, message)
         socket.send('PRIVMSG %s :%s\r\n' % (user, message))
     else:
+        # print 'PRIVMSG %s :%s\r\n' % (channel, message)
         socket.send('PRIVMSG %s :%s\r\n' % (channel, message))
 
 def runQuery(query, args):
     conn = sqlite3.connect('dbs/urldb.db')
-    
     cursor = conn.cursor()
     
     cursor.execute(query, args)
