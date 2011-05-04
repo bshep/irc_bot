@@ -5,25 +5,38 @@ import datetime
 
 urlRegEx = re.compile(r"https?://([^ ]+)")
 
-socket = None
-nickname = None
+sendMessageToChannel = None # This will be set to a function by main.py
 
-def parseMessage(line):
-    
-    line = line.rstrip()
-    for url in urlRegEx.finditer(line):
-        line_items = line.split(' ', 3)
+def processCommand(command, line, line_info):
+    if command == 'list':
+        processComandList(line_info)
+    else:
+        sendMessageToChannel(line_info[1], line_info[0], 'Unknown command: %s' % command)
         
-        username = line_items[0].split('!')[0][1:]
+        
+def processComandList(line_info):
+    rows = runQuery('SELECT url, spoken_where, spoken_by, on_date, count FROM urls')
+    
+    sendMessageToChannel(line_info[0], line_info[0], 'URL List:')
+    for row in rows:
+        timestamp = datetime.datetime.isoformat(datetime.datetime.fromtimestamp(float(row[3])))
+        sendMessageToChannel(line_info[0], line_info[0], 'url: %s spoken_by: %s channel: %s time: %s count: %s' %
+            ( row[0], row[2], row[1], timestamp, row[4] )
+            )
+    pass
+    
+    
+def parseMessage(line, line_info):
+    for url in urlRegEx.finditer(line_info[2]):
+        username = line_info[0]
         now = time.time()
-        channel = line_items[2]
+        channel = line_info[1]
         
         checkURL(url.group(0), channel, username, now)
 
 def checkURL(url, spoken_where, spoken_by, on_date):
-    row = runQuery('SELECT url, spoken_where, spoken_by, on_date, count FROM urls WHERE spoken_where = ? AND url = ?', [spoken_where, url] )
+    row = runQueryGetOne('SELECT url, spoken_where, spoken_by, on_date, count FROM urls WHERE spoken_where = ? AND url = ?', [spoken_where, url] )
     
-    print row
     
     if row:
         timestamp = datetime.datetime.isoformat(datetime.datetime.fromtimestamp(float(row[3])))
@@ -37,26 +50,26 @@ def checkURL(url, spoken_where, spoken_by, on_date):
     else:
         runQuery('INSERT INTO urls (url, spoken_where, spoken_by, on_date) VALUES (?, ?, ?, ?)', [url, spoken_where, spoken_by, on_date])
 
-def sendMessageToChannel(channel, user, message):
-    if channel == nickname:
-        # print 'PRIVMSG %s :%s\r\n' % (user, message)
-        socket.send('PRIVMSG %s :%s\r\n' % (user, message))
-    else:
-        # print 'PRIVMSG %s :%s\r\n' % (channel, message)
-        socket.send('PRIVMSG %s :%s\r\n' % (channel, message))
+def runQueryGetOne(query, args = []):
+    rows = runQuery(query, args)
+    print rows
+    print rows[0]
+    
+    return rows[0]
 
-def runQuery(query, args):
+
+def runQuery(query, args = []):
     conn = sqlite3.connect('dbs/urldb.db')
     cursor = conn.cursor()
     
     cursor.execute(query, args)
     
-    row = cursor.fetchone()
+    rows = cursor.fetchall()
     
     conn.commit()
     conn.close()
     
-    return row
+    return rows
     
 def initModule():
     runQuery('CREATE TABLE IF NOT EXISTS urls (url text, spoken_where text, spoken_by text, on_date text, count int)',[])

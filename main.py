@@ -6,12 +6,12 @@ sys.setdefaultencoding("utf-8")
 
 HOST='irc.freenode.net' #The server we want to connect to
 PORT=6667 #The connection port which is usually 6667
-NICK='MariaBot' #The bot's nickname
+NICK='MariaBot_test' #The bot's nickname
 IDENT='Maria'
 REALNAME='what u talkin about'
 channel_list='#elweb' #The default channel for the bot
 
-MODULES_LOAD='urldb'
+MODULES_LOAD=''
 
 modules = {}
 
@@ -47,13 +47,15 @@ def processLine(line):
     #     print 'Identifying...'
         # irc_socket.send('PRIVMSG NickServ :identify 12345\r\n')
     
-    if line.find('PRIVMSG')!=-1: #Call a parsing function
-        parseMessage(line)
+    if line.find(' PRIVMSG ')!=-1: #Call a parsing function
+        line_info = getLineInformation(line)
+    
+        parseMessage(line, line_info)
         
         for module in modules:
             print 'Sending to module: %s' % module
             try:
-                modules[module].parseMessage(line)
+                modules[module].parseMessage(line, line_info)
             except Exception, e:
                 print 'Error in module: %s' % module
                 print e
@@ -67,24 +69,67 @@ def processLine(line):
 def joinChannel(channel):
     irc_socket.send('JOIN '+channel+'\r\n') #Join a channel
     
-def parseMessage(line):
-    """docstring for fname"""
+def parseMessage(line, line_info):
     print 'Got a line i should parse...'
-    line_items=line.split(' ', 3)
     
-    line_txt = line_items[3][1:].rstrip()
+    line_txt = line_info[2]
     
-    print line_txt
+    # print 'Line Info: %s' % str(line_info)
+    # print line_txt
     
-    if line_txt == '@reload':
-        for module in modules:
-            print 'Reloading module: %s' % module
-            reload(modules[module])
+    if line_txt[0] == '@': #This is a command do something about it
+        command = line_txt.split(' ', 1)
+        if command[0] == '@reload':
+            if command[1] == 'all':
+                for module in modules:
+                    sendMessageToChannel(line_info[1], line_info[0], 'Relaoding module: %s' % module)
+                    reload(modules[module])
+            else:
+                if modules.has_key(command[1]):
+                    sendMessageToChannel(line_info[1], line_info[0], 'Relaoding module: %s' % command[1])
+                    reload(modules[command[1]])
+                else:
+                    sendMessageToChannel(line_info[1], line_info[0], 'No module named %s' % command[1])
 
-        initModules()
-            
-    elif line_txt == '@quit 12345':
-        sys.exit(0)    
+            initModules()
+        elif command[0] == '@load':
+            if command[1] != '':
+                try:
+                    loadModule(command[1])
+                    initModules()
+                    sendMessageToChannel(line_info[1], line_info[0], 'Succesfully loaded module %s' % command[1])
+                except Exception, e:
+                    sendMessageToChannel(line_info[1], line_info[0], 'Could not load module named %s' % command[1])
+                            
+        elif modules.has_key(command[0][1:]):
+            try:
+                modules[command[0][1:]].processCommand(command[1], line, line_info)
+            except Exception, e:
+                print 'Error sending processCommand to %s' % command[0][1:]
+                print e
+        else:
+            sendMessageToChannel(line_info[1], line_info[0], 'Unknown command %s' % command[0])
+
+def getLineInformation(line):
+    line_items = line.split(' ', 3) # USERNAME COMMAND CHANNEL :TEXT
+    
+    username_mask = line_items[0].split('!', 1)
+    command = line_items[1]
+    channel = line_items[2]
+    line_text = line_items[3][1:].rstrip()
+    username = username_mask[0][1:]
+    mask = username_mask[1]
+    
+    return ( username, channel, line_text, command, mask )
+
+def sendMessageToChannel(channel, user, message):
+    print 'In main.py'
+    if channel == NICK:
+        # print 'PRIVMSG %s :%s\r\n' % (user, message)
+        irc_socket.send('PRIVMSG %s :%s\r\n' % (user, message))
+    else:
+        # print 'PRIVMSG %s :%s\r\n' % (channel, message)
+        irc_socket.send('PRIVMSG %s :%s\r\n' % (channel, message))
 
 def loadModule(module_name):
     global modules
@@ -95,8 +140,7 @@ def loadModule(module_name):
 def initModules():
     for module in modules:
         print 'Initializing module: %s' % module
-        modules[module].socket = irc_socket
-        modules[module].nickname = NICK
+        modules[module].sendMessageToChannel = sendMessageToChannel
 
 def loadDefaultModules():
     global modules
