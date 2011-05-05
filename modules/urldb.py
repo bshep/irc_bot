@@ -17,7 +17,7 @@ def processCommand(command, line, line_info):
 def processComandList(line_info):
     rows = runQuery('SELECT url, spoken_where, spoken_by, on_date, count FROM urls')
     
-    sendMessageToChannel(line_info[0], line_info[0], 'URL List:')
+    sendMessageToChannel(line_info[0], line_info[0], 'URL List(Total = %i):' % len(rows))
     for row in rows:
         timestamp = datetime.datetime.isoformat(datetime.datetime.fromtimestamp(float(row[3])))
         sendMessageToChannel(line_info[0], line_info[0], 'url: %s spoken_by: %s channel: %s time: %s count: %s' %
@@ -52,10 +52,13 @@ def checkURL(url, spoken_where, spoken_by, on_date):
 
 def runQueryGetOne(query, args = []):
     rows = runQuery(query, args)
-    print rows
-    print rows[0]
     
-    return rows[0]
+    if len(rows) >= 1:
+        ret = rows[0]
+    else:
+        ret = None
+    
+    return ret
 
 
 def runQuery(query, args = []):

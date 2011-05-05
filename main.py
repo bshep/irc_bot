@@ -1,5 +1,6 @@
 import sys
 import socket
+import time
 
 reload(sys)
 sys.setdefaultencoding("utf-8")
@@ -11,7 +12,7 @@ IDENT='Maria'
 REALNAME='what u talkin about'
 channel_list='#elweb' #The default channel for the bot
 
-MODULES_LOAD=''
+MODULES_LOAD='urldb'
 
 modules = {}
 
@@ -54,11 +55,14 @@ def processLine(line):
         
         for module in modules:
             print 'Sending to module: %s' % module
+            modules[module].parseMessage(line, line_info)
             try:
-                modules[module].parseMessage(line, line_info)
+                # modules[module].parseMessage(line, line_info)
+                pass
             except Exception, e:
                 print 'Error in module: %s' % module
                 print e
+                raise e
                 
     line=line.rstrip() #remove trailing 'rn'
     line=line.split()
@@ -130,6 +134,8 @@ def sendMessageToChannel(channel, user, message):
     else:
         # print 'PRIVMSG %s :%s\r\n' % (channel, message)
         irc_socket.send('PRIVMSG %s :%s\r\n' % (channel, message))
+    
+    time.sleep(.75)
 
 def loadModule(module_name):
     global modules
