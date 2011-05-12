@@ -8,14 +8,34 @@ urlRegEx = re.compile(r"https?://([^ ]+)")
 sendMessageToChannel = None # This will be set to a function by main.py
 
 def processCommand(command, line, line_info):
-    if command == 'list':
-        processComandList(line_info)
+    command_items = command.split()
+    
+    if len(command_items) == 0:
+        return
+    
+    if command_items[0] == 'list':
+        line_items = command_items[1:]
+            
+        if len(line_items) > 0:
+            processComandListFiltered(line_info, line_items[0])
+        else:
+            processComandList(line_info)
     else:
-        sendMessageToChannel(line_info[1], line_info[0], 'Unknown command: %s' % command)
+        sendMessageToChannel(line_info[1], line_info[0], 'urldb: Unknown command: %s' % command)
         
-        
+def processComandListFiltered(line_info, the_filter):
+    rows = runQuery('SELECT url, spoken_where, spoken_by, on_date, count FROM urls WHERE spoken_where = \'%s\' OR spoken_by = \'%s\' ORDER BY count DESC' % (the_filter, the_filter) )
+    
+    sendMessageToChannel(line_info[0], line_info[0], 'URL List(Total = %i):' % len(rows))
+    for row in rows:
+        timestamp = datetime.datetime.isoformat(datetime.datetime.fromtimestamp(float(row[3])))
+        sendMessageToChannel(line_info[0], line_info[0], 'url: %s spoken_by: %s channel: %s time: %s count: %s' %
+            ( row[0], row[2], row[1], timestamp, row[4] )
+            )
+    pass
+
 def processComandList(line_info):
-    rows = runQuery('SELECT url, spoken_where, spoken_by, on_date, count FROM urls WHERE spoken_where = %s ORDER BY count DESC' % (line_info[1]) )
+    rows = runQuery('SELECT url, spoken_where, spoken_by, on_date, count FROM urls WHERE spoken_where = \'%s\' ORDER BY count DESC' % (line_info[1]) )
     
     sendMessageToChannel(line_info[0], line_info[0], 'URL List(Total = %i):' % len(rows))
     for row in rows:
