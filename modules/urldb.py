@@ -15,7 +15,7 @@ def processCommand(command, line, line_info):
         
         
 def processComandList(line_info):
-    rows = runQuery('SELECT url, spoken_where, spoken_by, on_date, count FROM urls ORDER BY count DESC')
+    rows = runQuery('SELECT url, spoken_where, spoken_by, on_date, count FROM urls WHERE spoken_where = %s ORDER BY count DESC' % (line_info[1]) )
     
     sendMessageToChannel(line_info[0], line_info[0], 'URL List(Total = %i):' % len(rows))
     for row in rows:
