@@ -82,22 +82,30 @@ def parseMessage(line, line_info):
     # print line_txt
     
     if line_txt[0] == '@': #This is a command do something about it
+        print 'Got a command!'
         command = line_txt.split(' ', 1)
-        if command[0] == '@reload':
-            if command[1] == 'all':
-                for module in modules:
-                    sendMessageToChannel(line_info[1], line_info[0], 'Relaoding module: %s' % module)
-                    reload(modules[module])
-            else:
-                if modules.has_key(command[1]):
-                    sendMessageToChannel(line_info[1], line_info[0], 'Relaoding module: %s' % command[1])
-                    reload(modules[command[1]])
+        
+        command[0] = command[0][1:]
+        
+        if len(command) == 1:
+            return
+        
+        if command[0] == 'reload':
+            if len(command) > 1:
+                if command[1] == 'all':
+                    for module in modules:
+                        sendMessageToChannel(line_info[1], line_info[0], 'Relaoding module: %s' % module)
+                        reload(modules[module])
                 else:
-                    sendMessageToChannel(line_info[1], line_info[0], 'No module named %s' % command[1])
+                    if modules.has_key(command[1]):
+                        sendMessageToChannel(line_info[1], line_info[0], 'Relaoding module: %s' % command[1])
+                        reload(modules[command[1]])
+                    else:
+                        sendMessageToChannel(line_info[1], line_info[0], 'No module named %s' % command[1])
 
-            initModules()
-        elif command[0] == '@load':
-            if command[1] != '':
+                initModules()
+        elif command[0] == 'load':
+            if len(command) > 1:
                 try:
                     loadModule(command[1])
                     initModules()
@@ -105,14 +113,18 @@ def parseMessage(line, line_info):
                 except Exception, e:
                     sendMessageToChannel(line_info[1], line_info[0], 'Could not load module named %s' % command[1])
                             
-        elif modules.has_key(command[0][1:]):
+        elif modules.has_key(command[0]):
             try:
-                modules[command[0][1:]].processCommand(command[1], line, line_info)
+                if len(command) > 1:
+                    modules[command[0]].processCommand(command[1], line, line_info)
+                else:
+                    modules[command[0]].processCommand('', line, line_info)
             except Exception, e:
-                print 'Error sending processCommand to %s' % command[0][1:]
+                print 'Error sending processCommand to %s' % command[0]
                 print e
         else:
-            sendMessageToChannel(line_info[1], line_info[0], 'Unknown command %s' % command[0])
+            pass
+            # sendMessageToChannel(line_info[1], line_info[0], 'Unknown command %s' % command[0])
 
 def getLineInformation(line):
     line_items = line.split(' ', 3) # USERNAME COMMAND CHANNEL :TEXT
