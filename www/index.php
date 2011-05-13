@@ -9,7 +9,7 @@
     $results = $db->query('SELECT * FROM urls WHERE spoken_where = \'#elweb\' ORDER BY count DESC');
     
     while($row = $results->fetchArray()) {
-        print("URL: ".$row['url'].' spoken by '.$row['spoken_by'].' and repated '.$row['count']."<br>\n");
+        print($row['spoken_by']." mentioned: <a href=\"".$row['url'].'">'.$row['url'].'</a> and was repated '.$row['count']." times<br>\n");
     }
 ?>
 </body>
