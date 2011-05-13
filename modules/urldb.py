@@ -24,7 +24,7 @@ def processCommand(command, line, line_info):
         sendMessageToChannel(line_info[1], line_info[0], 'urldb: Unknown command: %s' % command)
         
 def processComandListFiltered(line_info, the_filter):
-    rows = runQuery('SELECT url, spoken_where, spoken_by, on_date, count FROM urls WHERE spoken_where = \'%s\' OR spoken_by = \'%s\' ORDER BY count DESC' % (the_filter, the_filter) )
+    rows = runQuery('SELECT url, spoken_where, spoken_by, on_date, count FROM urls WHERE spoken_where = ? OR spoken_by = ? ORDER BY count DESC', [the_filter, the_filter] )
     
     sendMessageToChannel(line_info[0], line_info[0], 'URL List(Total = %i):' % len(rows))
     for row in rows:
@@ -35,7 +35,7 @@ def processComandListFiltered(line_info, the_filter):
     pass
 
 def processComandList(line_info):
-    rows = runQuery('SELECT url, spoken_where, spoken_by, on_date, count FROM urls WHERE spoken_where = \'%s\' ORDER BY count DESC' % (line_info[1]) )
+    rows = runQuery('SELECT url, spoken_where, spoken_by, on_date, count FROM urls WHERE spoken_where = ? ORDER BY count DESC', [line_info[1]] )
     
     sendMessageToChannel(line_info[0], line_info[0], 'URL List(Total = %i):' % len(rows))
     for row in rows:
