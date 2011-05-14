@@ -5,7 +5,9 @@ import datetime
 
 urlRegEx = re.compile(r"https?://([^ ]+)")
 
-sendMessageToChannel = None # This will be set to a function by main.py
+sendMessage = None # This will be set to a function by main.py
+sendMessageRaw = None
+sendNotice = None
 
 def processCommand(command, line, line_info):
     command_items = command.split()
@@ -21,15 +23,15 @@ def processCommand(command, line, line_info):
         else:
             processComandList(line_info)
     else:
-        sendMessageToChannel(line_info[1], line_info[0], 'urldb: Unknown command: %s' % command)
+        sendMessage(line_info[1], line_info[0], 'urldb: Unknown command: %s' % command)
         
 def processComandListFiltered(line_info, the_filter):
     rows = runQuery('SELECT url, spoken_where, spoken_by, on_date, count FROM urls WHERE spoken_where = ? OR spoken_by = ? ORDER BY count DESC', [the_filter, the_filter] )
     
-    sendMessageToChannel(line_info[0], line_info[0], 'URL List(Total = %i):' % len(rows))
+    sendMessage(line_info[0], line_info[0], 'URL List(Total = %i):' % len(rows))
     for row in rows:
         timestamp = datetime.datetime.isoformat(datetime.datetime.fromtimestamp(float(row[3])))
-        sendMessageToChannel(line_info[0], line_info[0], 'url: %s spoken_by: %s channel: %s time: %s count: %s' %
+        sendMessage(line_info[0], line_info[0], 'url: %s spoken_by: %s channel: %s time: %s count: %s' %
             ( row[0], row[2], row[1], timestamp, row[4] )
             )
     pass
@@ -37,10 +39,10 @@ def processComandListFiltered(line_info, the_filter):
 def processComandList(line_info):
     rows = runQuery('SELECT url, spoken_where, spoken_by, on_date, count FROM urls WHERE spoken_where = ? ORDER BY count DESC', [line_info[1]] )
     
-    sendMessageToChannel(line_info[0], line_info[0], 'URL List(Total = %i):' % len(rows))
+    sendMessage(line_info[0], line_info[0], 'URL List(Total = %i):' % len(rows))
     for row in rows:
         timestamp = datetime.datetime.isoformat(datetime.datetime.fromtimestamp(float(row[3])))
-        sendMessageToChannel(line_info[0], line_info[0], 'url: %s spoken_by: %s channel: %s time: %s count: %s' %
+        sendMessage(line_info[0], line_info[0], 'url: %s spoken_by: %s channel: %s time: %s count: %s' %
             ( row[0], row[2], row[1], timestamp, row[4] )
             )
     pass
@@ -61,10 +63,10 @@ def checkURL(url, spoken_where, spoken_by, on_date):
     if row:
         timestamp = datetime.datetime.isoformat(datetime.datetime.fromtimestamp(float(row[3])))
         if row[4] == 1:
-            sendMessageToChannel(spoken_where, spoken_by, '%s already shared %s on %s' % (row[2], url, timestamp))
+            sendMessage(spoken_where, spoken_by, '%s already shared %s on %s' % (row[2], url, timestamp))
         else:
             # pass
-            sendMessageToChannel(spoken_where, spoken_by, '%s already shared %s on %s and has been repeated %i times' % (row[2], url, timestamp, row[4]+1))
+            sendMessage(spoken_where, spoken_by, '%s already shared %s on %s and has been repeated %i times' % (row[2], url, timestamp, row[4]+1))
         
         runQuery('UPDATE urls SET count=count+1 WHERE spoken_where = ? AND url = ?', [spoken_where, url])
     else:
