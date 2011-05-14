@@ -11,39 +11,67 @@ modules = {}
 
 irc_socket = None
 send_queue = []
+delayed_actions = []
 
 def connectAndProcess():
     global irc_socket
     
-    irc_buffer = ""
-    
-    
-    irc_socket=socket.socket( ) #Create the socket
-    irc_socket.connect((config.HOST, config.PORT)) #Connect to server
-    
-    irc_socket_fd = irc_socket.fileno()
-    
-    sendMessageRaw('NICK '+config.NICK+'\r\n') #Send the nick to server
-    sendMessageRaw('USER '+config.IDENT+' '+config.HOST+' bla :'+config.REALNAME+'\r\n') #Identify to server
-    
-    processSendQueue()
-    
     while 1:
-        if len(select.select([irc_socket_fd],[],[], 1)[0]) > 0:
-            irc_buffer=irc_buffer+irc_socket.recv(1024) #recieve server messages
+        irc_buffer = ""
+    
+    
+        irc_socket=socket.socket( ) #Create the socket
+        irc_socket.connect((config.HOST, config.PORT)) #Connect to server
+    
+        irc_socket_fd = irc_socket.fileno()
+    
+        sendMessageRaw('NICK '+config.NICK+'\r\n') #Send the nick to server
+        sendMessageRaw('USER '+config.IDENT+' '+config.HOST+' bla :'+config.REALNAME+'\r\n') #Identify to server
+    
+        processSendQueue()
         
-            irc_lines = irc_buffer.split('\n')
-            irc_buffer = irc_lines.pop()
+        connected = True
         
-            for line in irc_lines:
-                processLine(line)
-        else:
-            processSendQueue()
+        while connected:
+            if len(select.select([irc_socket_fd],[],[], 1)[0]) > 0:
+                receive_data = irc_socket.recv(1024)
+            
+                if len(receive_data) == 0:
+                    print 'Connection Closed....'
+                    connected = False
+                    continue
+            
+                irc_buffer=irc_buffer+receive_data #recieve server messages
+        
+                irc_lines = irc_buffer.split('\n')
+                irc_buffer = irc_lines.pop()
+        
+                for line in irc_lines:
+                    processLine(line)
+            else:
+                processSendQueue()
+                processDelayedActions()
             
 def processSendQueue():
     if len(send_queue) > 0:
         line = send_queue.pop(0)
         irc_socket.send(line)
+
+def processDelayedActions():
+    global delayed_actions
+
+    if len(delayed_actions) > 0:
+        new_actions = []
+        for (action, when) in delayed_actions:
+            when = when - 1
+            
+            if when == 0:
+                (function, args) = action
+                function(args)
+            else:
+                new_actions.append((action, when))
+        
+        delayed_actions = new_actions
 
 def processLine(line):
     print line #server message is output
@@ -68,15 +96,25 @@ def processLine(line):
             for module in modules:
                 initModule(module)
         
+        # full/invite_only/banned/need_key from channel, try to come back in 1 minute
+        if srv_command == '471' or srv_command == '473' or srv_command == '474' or srv_command == '475': 
+            line_parts = line.split()
+            channel = line_parts[3]
+            delayed_actions.append( ( ( joinChannel, ( channel ) ), 60 ) )
+            
+
         # if line.find('NickServ!NickServ@services. NOTICE')!=-1:
         #     print 'Identifying...'
         # sendMessage(config.NICK, 'NickServ', 'identify 12345')
-    
+        
         if srv_command == 'PRIVMSG': #Call a parsing function
             line_info = getLineInformation(line)
-    
+            
             parseMessage(line, line_info)
-
+            
+        if srv_command == 'KICK': # bshep!~bshep_fr@bshep.xen.prgmr.com KICK #bshep_12331242 MariaBot2 :MariaBot2
+            line_parts = line.split()
+            joinChannel(line_parts[2])
 
 
 def joinChannel(channel):
