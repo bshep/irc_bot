@@ -14,4 +14,4 @@ def parseMessage(line, line_info):
     elif line_info[2] == '\x01TIME\x01':
         sendNotice(line_info[0],'\x01TIME now\x01\r\n', True)
     else:
-        sendNotice(line_info[0],line_info[2]+'\r\n', True)
+        pass
